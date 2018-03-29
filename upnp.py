@@ -458,8 +458,9 @@ class upnp:
 				print self.STARS
 				print ''
 
-                        sock.send(soapRequest)
-                        while True:
+			print soapRequest
+			sock.send(soapRequest)
+			while True:
 				data = sock.recv(self.MAX_RECV)
 				if not data:
 					break
@@ -467,9 +468,11 @@ class upnp:
 					soapResponse += data
 					if self.soapEnd.search(soapResponse.lower()) != None:
 						break
-                        sock.close()
+
+			sock.close()
 	
 			(header,body) = soapResponse.split('\r\n\r\n',1)
+			print header, body
 			if not header.upper().startswith('HTTP/1.') and ' 200 ' in header.split('\r\n')[0]:
 				print 'SOAP request failed with error code:',header.split('\r\n')[0].split(' ',1)[1]
 				errorMsg = self.extractSingleTag(body,'errorDescription')
@@ -477,14 +480,15 @@ class upnp:
 					print 'SOAP error message:',errorMsg
 				return False
 			else:
+				#print body
 				return body
-                except Exception, e:
-                        print 'Caught socket exception:',e
-                        sock.close()
-                        return False
-                except KeyboardInterrupt:
+		except Exception, e:
+			print 'Caught socket exception:',e
+			sock.close()
+			return False
+		except KeyboardInterrupt:
 			print ""
-                        sock.close()
+			sock.close()
 			return False
 
 

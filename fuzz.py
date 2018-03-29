@@ -4,6 +4,7 @@ from actions import *
 from testcases import *
 from structures import *
 import base64
+import sys
 
 debug = 0
 
@@ -12,13 +13,13 @@ debug = 0
 @option: for other usage
 @usage: just sending fuzzing data once
 '''
-def do_fuzz(hp, fuzz_case, option):
-	hostInfo = hp.ENUM_HOSTS[0]
-	service  = fuzz_case.service
+def do_fuzz(hp, i, fuzz_case, option):
+	hostInfo = hp.ENUM_HOSTS[i]
+	service_fullName  = fuzz_case.service_fullName
 	ctlurl   = fuzz_case.ctlurl
 	action   = fuzz_case.action
 	args     = fuzz_case.args
-	state = hp.sendSOAP(hostInfo['name'], service, ctlurl, action, args)
+	state = hp.sendSOAP(hostInfo['name'], service_fullName, ctlurl, action, args)
 
 	return state
 
@@ -42,6 +43,7 @@ def get_devices(hp, index):
 #Get services and its control urls of the device
 def get_services_and_control_urls(hp, index, device):
 	services = []
+	
 	control_urls = []
 	service_ctrurls = {}
 	hostInfo = hp.ENUM_HOSTS[index]
@@ -77,6 +79,19 @@ def get_services_and_control_urls(hp, index, device):
 
 	return services, service_ctrurls
 
+#used for request, it's necessary!
+def get_fullName_by_service(hp, index, device, service):
+	service_fullName = None
+	try:
+		services = hp.ENUM_HOSTS[index]['deviceList'][device]['services']
+	except Exception, e:
+		print "Caught Exception in get_fullName_by_service:", e
+		return False
+
+	service_fullName = services[service]['fullName']
+	return service_fullName
+
+
 #getting service's actions
 def get_actions(hp, index, device, service):
 	actions = []
@@ -106,6 +121,7 @@ def get_keys(args):
 	return keys
 
 #remove the out-direction arguments
+#Actually, we don't need to do this operation
 def remove_out_args(args):
 	for arg in args:
 		if args[arg]['direction'] == 'out':
@@ -132,18 +148,18 @@ def get_args(hp, index, device, service, action):
 
 	argList = get_keys(actionArgs)
 	#Including properties
-	args = remove_out_args(actionArgs)
+	#args = remove_out_args(actionArgs)
 	if debug:
 		print argList
 
-	return argList, args
+	return argList, actionArgs
 
 
 '''
-usage: doing the real fuzzing job
 Before fuzzing, we must get the deivce's services and
 the services' actions and the actions' arguments.
-As if the only input is the actions' arguments.
+The fuzzing job is mainly focusing on the actions' args.
+And we also can try to fuzz the request header?
 '''
 def fuzz():
 	hp = upnp(False, False, None, None)
@@ -201,30 +217,40 @@ def fuzz():
 					argList, args = get_args(hp, i, device, service, action)
 					if len(args) == 0 or len(argList) == 0:
 						continue
+					#print args
 					
 					control_url = services_ctrurls[service]
-					'''
-					there is a problem that if the data type if bin.base64,
-					before sending our requests, we must encode the data(or argument)
-					''' 
-					for argName, argVals in args.iterItems():
+
+					for data in fuzz_data:
 						sendArgs = {}
-						actionStateVar = argVals['relatedStateVarialbe']
-						stateVar = hp.ENUM_HOSTS[i]['deviceList'][device]['services'][service]['serviceStateVariable'][actionStateVar]
+						for argName, argVals in args.iteritems():
+							#print '.....'
+							#print argVals
+							actionStateVar = argVals['relatedStateVariable']
+							stateVar = hp.ENUM_HOSTS[i]['deviceList'][device]['services'][service]['serviceStateVariables'][actionStateVar]
 						
-						for data in fuzz_data:
-							if stateVar['dataType'] == 'bin.base64':
-								data = base64.encodestring(data)
-							sendArgs[argName] = (data, stateVar['dataType'])
-					
+							if argVals['direction'] == 'in':
+
+								'''
+								there is a problem that if the data type is bin.base64,
+								before sending our requests, we must encode the data(or argument)
+								''' 
+								if stateVar['dataType'] == 'bin.base64':
+									data = base64.encodestring(str(data))
+								sendArgs[argName] = (data, stateVar['dataType'])
+								#print sendArgs
 						
-							fuzz_case = Fuzz_case(service, control_url, action, sendArgs)
+						#print len(sendArgs)
+						if len(sendArgs) > 0:
+							service_fullName = get_fullName_by_service(hp, i, device, service)
+							fuzz_case = Fuzz_case(service_fullName, control_url, action, sendArgs)
 
 							print "\n\n[+] Fuzzing %d times" % fuzz_times
 							fuzz_times += 1
-							state = do_fuzz(hp, fuzz_case, False)
+							state = do_fuzz(hp, i, fuzz_case, False)
 							if state == False:
 								print "[-] Can't receiving data. Server crashed?"
+								#sys.exit()
 								#We must save the data to analyse.
 
 

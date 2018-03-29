@@ -4,8 +4,8 @@ Some structures for fuzzing
 
 #A fuzz case's changeable part, it's just a description.
 class Fuzz_case:
-	def __init__(self, service, ctlurl, action, args):
-		self.service = service
+	def __init__(self, service_fullName, ctlurl, action, args):
+		self.service_fullName = service_fullName
 		self.ctlurl  = ctlurl
 		self.action  = action
 		#for args, it's a list

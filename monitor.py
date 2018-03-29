@@ -1,3 +1,3 @@
 '''
-Simple monitor!
+Simple monitor 
 '''
