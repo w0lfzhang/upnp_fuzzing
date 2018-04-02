@@ -5,6 +5,9 @@ from testcases import *
 from structures import *
 import base64
 import sys
+import os
+from monitor import *
+from fuzz_http_xml import *
 
 debug = 0
 
@@ -154,6 +157,10 @@ def get_args(hp, index, device, service, action):
 
 	return argList, actionArgs
 
+def init():
+	with open('crash/data_crash', 'w+') as f:
+		f.seek(0)
+		f.truncate()
 
 '''
 Before fuzzing, we must get the deivce's services and
@@ -162,6 +169,7 @@ The fuzzing job is mainly focusing on the actions' args.
 And we also can try to fuzz the request header?
 '''
 def fuzz():
+	init()
 	hp = upnp(False, False, None, None)
 	'''
 	first we send a request to 239.255.255.250:1900
@@ -192,11 +200,7 @@ def fuzz():
 			command = ['host', 'summary', i]
 			#host(len(command), command, hp)
 
-	if debug:
-		devices = get_devices(hp, 1)
-		services, services_ctrurls = get_services_and_control_urls(hp, 1, devices[0])
-		actions = get_actions(hp, 1, devices[0], services[0])
-		args = get_args(hp, 1, devices[0], services[0], actions[0])
+	host_ip = None
 	'''
 	after getting the infomation we need, we constuct some packages sending
 	to the control url.
@@ -206,6 +210,8 @@ def fuzz():
 
 	fuzz_data = get_fuzz_data()
 	#A large loop
+	print "\n\n[+] Fuzzing......"
+	print '[+] Stage 1 fuzzing start.......'
 	for i in range(0, scount):                      
 		devices = get_devices(hp, i)
 		#print devices
@@ -245,17 +251,36 @@ def fuzz():
 							service_fullName = get_fullName_by_service(hp, i, device, service)
 							fuzz_case = Fuzz_case(service_fullName, control_url, action, sendArgs)
 
-							print "\n\n[+] Fuzzing %d times" % fuzz_times
 							fuzz_times += 1
 							state = do_fuzz(hp, i, fuzz_case, False)
+							'''
+							#get host ip address
+							host_ip = hp.ENUM_HOSTS[i]['name'].split(':')[0]
+							host_port = hp.ENUM_HOSTS[i]['name'].split(':')[1]
+							#print host_ip
+							state = check_service(host_ip, int(host_port))
+							'''
 							if state == False:
-								print "[-] Can't receiving data. Server crashed?"
+								print "[-] Can't receive data. Server crashed?"
 								#sys.exit()
 								#We must save the data to analyse.
+								with open('crash/data_crash', 'a+') as f:
+									f.write('[+] ')
+									f.write('host: ' + hp.ENUM_HOSTS[i]['name'])
+									f.write('\tdevice: ' + device)
+									f.write('\tservice: ' + service)
+									f.write('\taction: ' + action)
+									f.write('\targs: ' + str(sendArgs))
+									f.write('\n')
+
+
+	fuzz_http_xml()
+	print '\n[+] Fuzzing finished! Just check the crash directory!'
 
 
 if __name__ == "__main__":
 	print '[+] Starting fuzzing......\n'
 	fuzz()
+	#os.system('rm *.pyc')
 
 

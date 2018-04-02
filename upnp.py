@@ -1,9 +1,4 @@
 #!/usr/bin/env python
-################################
-# Interactive UPNP application #
-# Craig Heffner                #
-# 07/16/2008                   #
-################################
 
 import sys
 import os
@@ -22,40 +17,6 @@ import getopt
 import select
 from socket import *
 
-# Most of the CmdCompleter class was originally written by John Kenyan
-# It serves to tab-complete commands inside the program's shell
-class CmdCompleter:
-	def __init__(self, commands):
-		self.commands = commands
-
-	# Traverses the list of available commands
-	def traverse(self, tokens, tree):
-		retVal = []
-
-		# If there are no commands, or no user input, return null
-		if tree is None or len(tokens) == 0:
-			retVal = []
-		# If there is only one word, only auto-complete the primary commands
-		elif len(tokens) == 1:
-			retVal = [x+' ' for x in tree if x.startswith(tokens[0])]
-		# Else auto-complete for the sub-commands
-		elif tokens[0] in tree.keys():
-			retVal = self.traverse(tokens[1:],tree[tokens[0]])
-
-		return retVal
-
-	# Returns a list of possible commands that match the partial command that the user has entered
-	def complete(self, text, state):
-		try:
-			tokens = readline.get_line_buffer().split()
-			if not tokens or readline.get_line_buffer()[-1] == ' ':
-				tokens.append('')
-			results = self.traverse(tokens,self.commands) + [None]
-			return results[state]
-		except Exception, e:
-			print "Failed to complete command: %s" % str(e)
-			
-		return
 
 #UPNP class for getting, sending and parsing SSDP/SOAP XML data (among other things...)
 class upnp:
@@ -427,11 +388,11 @@ class upnp:
 		#Create the SOAP request
 		soapBody = 	'<?xml version="1.0"?>\n'\
 				'<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">\n'\
-				'<SOAP-ENV:Body>\n'\
-				'\t<m:%s xmlns:m="%s">\n'\
-				'%s\n'\
-				'\t</m:%s>\n'\
-				'</SOAP-ENV:Body>\n'\
+				'\t<SOAP-ENV:Body>\n'\
+				'\t\t<m:%s xmlns:m="%s">\n'\
+				'\t\t\t%s\n'\
+				'\t\t</m:%s>\n'\
+				'\t</SOAP-ENV:Body>\n'\
 				'</SOAP-ENV:Envelope>' % (actionName,serviceType,argList,actionName)
 
 		#Specify the headers to send with the request
@@ -457,8 +418,9 @@ class upnp:
 				print soapRequest
 				print self.STARS
 				print ''
-
-			print soapRequest
+			if len(soapRequest) < 1000:
+				#print soapRequest
+				pass
 			sock.send(soapRequest)
 			while True:
 				data = sock.recv(self.MAX_RECV)
@@ -470,22 +432,27 @@ class upnp:
 						break
 
 			sock.close()
-	
+
+			if len(soapRequest) == 0:
+				return False
+			else:
+				return True
+
 			(header,body) = soapResponse.split('\r\n\r\n',1)
-			print header, body
-			if not header.upper().startswith('HTTP/1.') and ' 200 ' in header.split('\r\n')[0]:
+			#print header, body
+			if not header.upper().startswith('HTTP/1.') and ' 200 ' not in header.split('\r\n')[0]:
 				print 'SOAP request failed with error code:',header.split('\r\n')[0].split(' ',1)[1]
 				errorMsg = self.extractSingleTag(body,'errorDescription')
 				if errorMsg:
 					print 'SOAP error message:',errorMsg
-				return False
+				#return False
 			else:
 				#print body
 				return body
 		except Exception, e:
-			print 'Caught socket exception:',e
+			print '[-] Caught socket exception:',e
 			sock.close()
-			return False
+			#return False
 		except KeyboardInterrupt:
 			print ""
 			sock.close()
@@ -790,51 +757,5 @@ class upnp:
 					except:
 						pass
 		return True			
-
-	#Update the command completer
-	def updateCmdCompleter(self,struct):
-		indexOnlyList = {
-				'host' : ['get','details','summary'],
-				'save' : ['info']
-		}
-		hostCommand = 'host'
-		subCommandList = ['info']
-		sendCommand = 'send'
-
-		try:
-			structPtr = {}
-			topLevelKeys = {}
-			for key,val in struct.iteritems():
-				structPtr[str(key)] = val
-				topLevelKeys[str(key)] = None
-			
-			#Update the subCommandList
-			for subcmd in subCommandList:
-				self.completer.commands[hostCommand][subcmd] = None
-				self.completer.commands[hostCommand][subcmd] = structPtr
-
-			#Update the indexOnlyList
-			for cmd,data in indexOnlyList.iteritems():
-				for subcmd in data:
-					self.completer.commands[cmd][subcmd] = topLevelKeys
-
-			#This is for updating the sendCommand key
-			structPtr = {}
-			for hostIndex,hostData in struct.iteritems():
-				host = str(hostIndex)
-				structPtr[host] = {}
-				if hostData.has_key('deviceList'):
-					for device,deviceData in hostData['deviceList'].iteritems():
-						structPtr[host][device] = {}
-						if deviceData.has_key('services'):
-							for service,serviceData in deviceData['services'].iteritems():
-								structPtr[host][device][service] = {}
-								if serviceData.has_key('actions'):
-									for action,actionData in serviceData['actions'].iteritems():
-										structPtr[host][device][service][action] = None
-			self.completer.commands[hostCommand][sendCommand] = structPtr
-		except Exception,e:
-			print "Error updating command completer structure; some command completion features might not work..."
-		return
 
 

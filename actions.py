@@ -56,7 +56,7 @@ def msearch(argc,argv,hp):
 				count += 1
 
 		except Exception, e:
-			print '\nDiscover mode halted...'
+			print '\nDiscovering halted...'
 			break
 
 #Passively listen for UPNP NOTIFY packets
@@ -201,7 +201,7 @@ def host(argc,argv,hp):
 		action = argv[1]
 		if action == 'list':
 			if len(hp.ENUM_HOSTS) == 0:
-				print "No known hosts - try running the 'msearch' or 'pcap' commands"
+				print "No known hosts - try running the 'msearch' or 'pcap'"
 				return
 			print '[+] Found %d UPnP servers' % len(hp.ENUM_HOSTS)
 			for index,hostInfo in hp.ENUM_HOSTS.iteritems():

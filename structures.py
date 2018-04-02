@@ -8,7 +8,7 @@ class Fuzz_case:
 		self.service_fullName = service_fullName
 		self.ctlurl  = ctlurl
 		self.action  = action
-		#for args, it's a list
+		#for args, it's a dictionary
 		self.args    = args
 
 #Types of fuzzing data, actually, it's real data~
