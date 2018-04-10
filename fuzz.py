@@ -8,6 +8,7 @@ import sys
 import os
 from monitor import *
 from fuzz_http_xml import *
+from defs import *
 
 debug = 0
 
@@ -157,10 +158,6 @@ def get_args(hp, index, device, service, action):
 
 	return argList, actionArgs
 
-def init():
-	with open('crash/data_crash', 'w+') as f:
-		f.seek(0)
-		f.truncate()
 
 '''
 Before fuzzing, we must get the deivce's services and

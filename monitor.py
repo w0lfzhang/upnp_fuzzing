@@ -33,7 +33,8 @@ def check_alive(ip):
 		sys.exit(0)
 
 '''
-check the remtoe service available
+checking the remtoe service available.
+using connect() to check the service.
 '''
 def check_service(ip, port):
 	pass

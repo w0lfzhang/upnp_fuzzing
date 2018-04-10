@@ -40,6 +40,7 @@ def msearch(argc,argv,hp):
 		print 'Failed to bind port %d' % lport
 		return
 
+	#print request
 	hp.send(request,server)
 	count = 0
 	start = time.time()

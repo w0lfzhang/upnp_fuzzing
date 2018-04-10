@@ -432,14 +432,15 @@ class upnp:
 						break
 
 			sock.close()
+			(header,body) = soapResponse.split('\r\n\r\n',1)
+			print header, body
 
 			if len(soapRequest) == 0:
 				return False
 			else:
 				return True
 
-			(header,body) = soapResponse.split('\r\n\r\n',1)
-			#print header, body
+			
 			if not header.upper().startswith('HTTP/1.') and ' 200 ' not in header.split('\r\n')[0]:
 				print 'SOAP request failed with error code:',header.split('\r\n')[0].split(' ',1)[1]
 				errorMsg = self.extractSingleTag(body,'errorDescription')
@@ -452,7 +453,7 @@ class upnp:
 		except Exception, e:
 			print '[-] Caught socket exception:',e
 			sock.close()
-			#return False
+			return True
 		except KeyboardInterrupt:
 			print ""
 			sock.close()
